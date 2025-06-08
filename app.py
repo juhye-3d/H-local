@@ -2,92 +2,94 @@ import streamlit as st
 import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
-import json
 from streamlit_folium import st_folium
+import json
 
 # 1. 데이터 로딩
 병원데이터 = pd.read_csv("data/병합_소아병원_좌표_통합.csv")
 진료_병원_통계 = pd.read_csv("data/국민건강보험공단_시군구별 진료과목별 진료 정보_20231231.csv", encoding='EUC-KR')
 
-# 2. 진료 통계 데이터 전처리
-진료_df = 진료_병원_통계.copy()
-selected_subject = st.selectbox("진료과목을 선택하세요", sorted(진료_df["진료과목명"].dropna().unique()))
-filtered_df = 진료_df[진료_df["진료과목명"] == selected_subject]
+# 진료과목명 컬럼명 확인 및 정리
+진료_병원_통계 = 진료_병원_통계.rename(columns={"진료과목명": "진료과목", "시군구명": "시군구"})
 
+# 진료과목 선택
+selected_subject = st.selectbox("진료과목을 선택하세요", sorted(진료_병원_통계["진료과목"].dropna().unique()))
+
+# 선택한 진료과목만 필터링
+filtered_df = 진료_병원_통계[진료_병원_통계["진료과목"] == selected_subject]
+
+# Choropleth용 데이터 생성
 choropleth_data = filtered_df[["시군구", "진료인원(명)"]].copy()
 choropleth_data.columns = ["지역명", "value"]
 choropleth_data["value"] = pd.to_numeric(choropleth_data["value"], errors="coerce")
-choropleth_data = choropleth_data.dropna()
-choropleth_data = choropleth_data.groupby("지역명", as_index=False).mean()
+choropleth_data = choropleth_data.dropna().groupby("지역명", as_index=False).mean()
 
-# 3. 사용자 입력
-region_centers = {
-    "서울특별시": [37.5665, 126.9780],
-    "부산광역시": [35.1796, 129.0756],
-    "대구광역시": [35.8714, 128.6014],
-    "인천광역시": [37.4563, 126.7052],
-    "광주광역시": [35.1595, 126.8526],
-    "대전광역시": [36.3504, 127.3845],
-    "울산광역시": [35.5384, 129.3114],
-    "세종특별자치시": [36.4801, 127.289],
-    "경기도": [37.4138, 127.5183],
-    "강원특별자치도": [37.8228, 128.1555],
-    "충청북도": [36.6358, 127.4912],
-    "충청남도": [36.5184, 126.8000],
-    "전라북도": [35.7175, 127.153],
-    "전라남도": [34.8161, 126.463],
-    "경상북도": [36.4919, 128.8889],
-    "경상남도": [35.4606, 128.2132],
-    "제주특별자치도": [33.4996, 126.5312]
-}
-
+# 지역과 검색어 선택
 region = st.selectbox("지역을 선택하세요", sorted(병원데이터["시군구코드명"].dropna().unique()))
 search_keyword = st.text_input("병원명 또는 진료과목 검색", "")
 
-# 4. 병원 데이터 필터링
+# 병원 데이터 필터링
 df = 병원데이터.copy()
 df = df[df["시군구코드명"] == region]
-
 if search_keyword:
     df = df[
         df["요양기관명"].str.contains(search_keyword, na=False, case=False) |
         df["진료과목내용명"].str.contains(search_keyword, na=False, case=False)
     ]
 
-# 선택된 지역 중심 좌표 사용
-center = region_centers.get(region, [37.5665, 126.9780])  # 기본값: 서울
-
-# 지도 생성
-m = folium.Map(location=center, zoom_start=12)
+# 3. 지도 생성
+m = folium.Map(location=[df["좌표(Y)"].mean(), df["좌표(X)"].mean()], zoom_start=12)
 marker_cluster = MarkerCluster().add_to(m)
 
 for _, row in df.iterrows():
     try:
-        병원명 = row['요양기관명']
-        진료과 = row.get('진료과목내용명', '')
+        popup_info = f"{row['요양기관명']}<br>{row.get('진료과목내용명', '')}"
         folium.Marker(
-            location=[row['좌표(Y)'], row['좌표(X)']],
-            popup=f"{병원명} ({진료과})",
+            location=[row["좌표(Y)"], row["좌표(X)"]],
+            popup=popup_info,
             icon=folium.Icon(color='blue', icon='plus-sign')
         ).add_to(marker_cluster)
     except:
         pass
 
-# 6. Choropleth 추가
-with open("data/skorea_municipalities_geo_simple.json", encoding='utf-8') as f:
+# 4. Choropleth 지도 추가
+with open("southkorea-maps/kostat/2013/json/skorea_municipalities_geo_simple.json", encoding='utf-8') as f:
     geo_data = json.load(f)
 
 folium.Choropleth(
     geo_data=geo_data,
     data=choropleth_data,
-    columns=['지역명', 'value'],
-    key_on='feature.properties.name',
-    fill_color='YlOrRd',
+    columns=["지역명", "value"],
+    key_on="feature.properties.name",
+    fill_color="YlOrRd",
     fill_opacity=0.6,
     line_opacity=0.5,
-    legend_name=f"지역별 '{selected_subject}' 진료인원",
-    nan_fill_color='lightgray'
+    legend_name="지역별 병원 1곳당 진료인원",
+    nan_fill_color="lightgray"
 ).add_to(m)
 
-# 7. Streamlit에 지도 출력
+# 5. Streamlit에 지도 출력
 st_data = st_folium(m, width=800, height=600)
+
+# 6. 마커 클릭 시 병원 정보 표시
+if st_data and st_data["last_object_clicked"]:
+    clicked = st_data["last_object_clicked"]
+    clicked_lat = clicked["lat"]
+    clicked_lon = clicked["lng"]
+
+    # 좌표 오차 허용
+    tolerance = 0.0001
+    matched = df[
+        (abs(df["좌표(Y)"] - clicked_lat) < tolerance) &
+        (abs(df["좌표(X)"] - clicked_lon) < tolerance)
+    ]
+
+    if not matched.empty:
+        hospital = matched.iloc[0]
+        st.subheader("🏥 선택한 병원 정보")
+        st.markdown(f"**병원명:** {hospital['요양기관명']}")
+        st.markdown(f"**진료과목:** {hospital.get('진료과목내용명', '정보 없음')}")
+        st.markdown(f"**주소:** {hospital.get('주소', '정보 없음')}")
+        st.markdown(f"**전화번호:** {hospital.get('전화번호', '정보 없음')}")
+    else:
+        st.warning("해당 위치의 병원 정보를 찾을 수 없습니다.")
