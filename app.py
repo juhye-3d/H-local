@@ -70,6 +70,9 @@ folium.Choropleth(
 
 # 5. Streamlit에 지도 출력
 st_data = st_folium(m, width=800, height=600)
+st.write("✅ 병원 데이터 컬럼들:", df.columns.tolist())
+st.write("🎯 클릭된 좌표:", clicked_lat, clicked_lon)
+st.write("🔍 매칭된 병원 데이터:", matched)
 
 # 6. 마커 클릭 시 병원 정보 표시
 if st_data and st_data["last_object_clicked"]:
