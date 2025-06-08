@@ -3,18 +3,22 @@ import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
 import json
-from streamlit_folium import st_folium  # pip install streamlit-folium 필요
+from streamlit_folium import st_folium
 
 # 1. 데이터 로딩
-병원데이터 = pd.read_csv("병합_소아병원_좌표_통합.csv")
-진료_병원_통계 = pd.read_csv("진료통계.csv", encoding='EUC-KR')
+병원데이터 = pd.read_csv("data/병합_소아병원_좌표_통합.csv")
+진료_병원_통계 = pd.read_csv("data/국민건강보험공단_시군구별 진료과목별 진료 정보_20231231.csv", encoding='EUC-KR')
 
-# 2. Choropleth용 데이터 준비
-choropleth_data = 진료_병원_통계[['시군구', '진료인원(명)']].copy()
-choropleth_data.columns = ['지역명', 'value']
-choropleth_data['value'] = pd.to_numeric(choropleth_data['value'], errors='coerce')
+# 2. 진료 통계 데이터 전처리
+진료_df = 진료_병원_통계.copy()
+selected_subject = st.selectbox("진료과목을 선택하세요", sorted(진료_df["진료과목"].dropna().unique()))
+filtered_df = 진료_df[진료_df["진료과목"] == selected_subject]
+
+choropleth_data = filtered_df[["시군구", "진료인원(명)"]].copy()
+choropleth_data.columns = ["지역명", "value"]
+choropleth_data["value"] = pd.to_numeric(choropleth_data["value"], errors="coerce")
 choropleth_data = choropleth_data.dropna()
-choropleth_data = choropleth_data.groupby('지역명', as_index=False).mean()
+choropleth_data = choropleth_data.groupby("지역명", as_index=False).mean()
 
 # 3. 사용자 입력
 region = st.selectbox("지역을 선택하세요", sorted(병원데이터["시군구코드명"].dropna().unique()))
@@ -61,7 +65,7 @@ folium.Choropleth(
     fill_color='YlOrRd',
     fill_opacity=0.6,
     line_opacity=0.5,
-    legend_name='지역별 병원 1곳당 진료인원',
+    legend_name=f"지역별 '{selected_subject}' 진료인원",
     nan_fill_color='lightgray'
 ).add_to(m)
 
