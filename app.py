@@ -54,7 +54,7 @@ for _, row in df.iterrows():
         pass
 
 # 6. Choropleth 추가
-with open("southkorea-maps/kostat/2013/json/skorea_municipalities_geo_simple.json", encoding='utf-8') as f:
+with open("data/skorea_municipalities_geo_simple.json", encoding='utf-8') as f:
     geo_data = json.load(f)
 
 folium.Choropleth(
