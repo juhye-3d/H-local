@@ -16,7 +16,7 @@ st.title("소아청소년과 병원 지도")
 filtered_df = 진료_병원_통계[진료_병원_통계["진료과목명"] == "소아청소년과"]
 
 # 👉 Choropleth용 데이터 생성
-choropleth_data = filtered_df[["시군구명", "진료인원(명)"]].copy()
+choropleth_data = filtered_df[["시군구", "진료인원(명)"]].copy()
 choropleth_data.columns = ["지역명", "value"]
 choropleth_data["value"] = pd.to_numeric(choropleth_data["value"], errors="coerce")
 choropleth_data = choropleth_data.dropna()
