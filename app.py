@@ -24,8 +24,8 @@ choropleth_data = choropleth_data.groupby("지역명", as_index=False).mean()
 region = st.selectbox("지역을 선택하세요", sorted(병원데이터["시군구코드명"].dropna().unique()))
 search_keyword = st.text_input("병원명 또는 진료과목 검색", "")
 
-lat = st.number_input("현재 위도 입력", value=37.5665)
-lon = st.number_input("현재 경도 입력", value=126.9780)
+#lat = st.number_input("현재 위도 입력", value=37.5665)
+#lon = st.number_input("현재 경도 입력", value=126.9780)
 
 # 4. 병원 데이터 필터링
 df = 병원데이터.copy()
@@ -37,8 +37,11 @@ if search_keyword:
         df["진료과목내용명"].str.contains(search_keyword, na=False, case=False)
     ]
 
-# 5. 지도 생성
-m = folium.Map(location=[lat, lon], zoom_start=12)
+# 선택된 지역 중심 좌표 사용
+center = region_centers.get(region, [37.5665, 126.9780])  # 기본값: 서울
+
+# 지도 생성
+m = folium.Map(location=center, zoom_start=12)
 marker_cluster = MarkerCluster().add_to(m)
 
 for _, row in df.iterrows():
