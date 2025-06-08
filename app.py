@@ -41,6 +41,7 @@ for _, row in df.iterrows():
     try:
         병원명 = row['요양기관명']
         주소 = row.get('주소', '')
+        주소 = 주소 if pd.notna(주소) else ''
         folium.Marker(
             location=[row['좌표(Y)'], row['좌표(X)']],
             popup=f"{병원명}<br>{주소}",
@@ -48,6 +49,7 @@ for _, row in df.iterrows():
         ).add_to(marker_cluster)
     except:
         pass
+
 
 # 6. Choropleth
 with open("data/skorea_municipalities_geo_simple.json", encoding='utf-8') as f:
