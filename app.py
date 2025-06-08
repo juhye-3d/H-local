@@ -11,8 +11,8 @@ from streamlit_folium import st_folium
 
 # 2. 진료 통계 데이터 전처리
 진료_df = 진료_병원_통계.copy()
-selected_subject = st.selectbox("진료과목을 선택하세요", sorted(진료_df["진료과목"].dropna().unique()))
-filtered_df = 진료_df[진료_df["진료과목"] == selected_subject]
+selected_subject = st.selectbox("진료과목을 선택하세요", sorted(진료_df["진료과목명"].dropna().unique()))
+filtered_df = 진료_df[진료_df["진료과목명"] == selected_subject]
 
 choropleth_data = filtered_df[["시군구", "진료인원(명)"]].copy()
 choropleth_data.columns = ["지역명", "value"]
